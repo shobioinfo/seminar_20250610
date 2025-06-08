@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier  # 今回は使っていませんが将来使うなら
 import os
 
 # ─── ページタイトル ───
@@ -39,12 +41,6 @@ if uploaded_file is not None:
         f.write(uploaded_file.getbuffer())
     st.success(f"ファイル `{uploaded_file.name}` がアップロードされました")
 
-# ─── 削除用コールバック定義 ───
-def delete_and_rerun(fn: str):
-    """ファイルを削除して、アプリを再実行する"""
-    os.remove(os.path.join(UPLOAD_DIR, fn))
-    st.experimental_rerun()
-
 # ─── 提出履歴と削除ボタン ───
 st.markdown("## 提出履歴（Accuracy と削除）")
 files = sorted(os.listdir(UPLOAD_DIR))
@@ -63,19 +59,17 @@ for fn in files:
         acc_str = "読み込み失敗"
         st.warning(f"{fn} の読み込みに失敗: {e}")
 
-    # ファイル名・Accuracy・削除ボタンを横並びに表示
+    # 1行分の UI
     col1, col2, col3 = st.columns([4, 2, 1])
     col1.write(fn)
     col2.write(acc_str)
-    col3.button(
-        "削除",
-        key=f"del_{fn}",
-        on_click=delete_and_rerun,
-        args=(fn,)
-    )
+    if col3.button("削除", key=f"del_{fn}"):
+        os.remove(path)
+        st.success(f"`{fn}` を削除しました。")
+        st.experimental_rerun()
 
 # ─── リーダーボード表示 ───
-st.markdown("## リーダーボード（Top 提出一覧）")
+# 提出済みファイルの上位3件だけを見やすく DataFrame にまとめても良いです
 leaderboard = []
 for fn in files:
     path = os.path.join(UPLOAD_DIR, fn)
@@ -93,4 +87,5 @@ if leaderboard:
     lb.insert(0, "順位", lb.index)
     medals = {1: "🥇", 2: "🥈", 3: "🥉"}
     lb["順位"] = lb["順位"].map(lambda i: f"{medals.get(i,'')} {i}" if i in medals else i)
+    st.markdown("## リーダーボード（Top）")
     st.dataframe(lb)
